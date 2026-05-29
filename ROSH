@@ -1,0 +1,78 @@
+import discord
+from discord import app_commands
+from discord.ext import commands
+import os
+
+# إعدادات البوت والـ Intents الأساسية
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+# 🔔 ضع هنا آي دي (ID) الرومات الخاصة بكل نظام من سيرفرك
+ROOM_IDENTITIES_ID = 123456789012345678    # ايدي روم الهويات
+ROOM_VALUES_ID = 123456789012345678        # ايدي روم الاقيام
+ROOM_BANK_ID = 123456789012345678          # ايدي روم البنك
+ROOM_CRAFTING_ID = 123456789012345678      # ايدي روم التصنيع
+
+@bot.event
+async def on_ready():
+    print(f'تم تشغيل البوت بنجاح باسم: {bot.user.name}')
+    try:
+        synced = await bot.tree.sync()
+        print(f"تم تحديث ومزامنة {len(synced)} من الأوامر المائلة.")
+    except Exception as e:
+        print(f"خطأ أثناء مزامنة الأوامر: {e}")
+
+# إنشاء الأمر المائل /send message وحصره للمسؤولين فقط
+@bot.tree.command(name="send_message", description="إرسال رسالة نظام محددة إلى الروم الخاص بها (للمسؤولين فقط)")
+@app_commands.describe(system="اختر النظام الذي تريد عرضه")
+@app_commands.choices(system=[
+    app_commands.Choice(name="الهويات", value="system_identities"),
+    app_commands.Choice(name="الاقيام", value="system_values"),
+    app_commands.Choice(name="البنك", value="system_bank"),
+    app_commands.Choice(name="التصنيع", value="system_crafting")
+])
+@app_commands.checks.has_permissions(administrator=True) # ⭐ هذا السطر يجعل الأمر يظهر للمسؤولين فقط
+async def send_message(interaction: discord.Interaction, system: app_commands.Choice[str]):
+    
+    if system.value == "system_identities":
+        channel = bot.get_channel(ROOM_IDENTITIES_ID)
+        if channel:
+            await channel.send("📋 **نظام الهويات:** تم تفعيل واجهة الهويات الخاصة بالسيرفر.")
+            await interaction.response.send_message("✅ تم إرسال رسالة نظام الهويات في الروم المخصص!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ لم يتم العثور على الروم، تأكد من صحة الـ ID في الكود.", ephemeral=True)
+
+    elif system.value == "system_values":
+        channel = bot.get_channel(ROOM_VALUES_ID)
+        if channel:
+            await channel.send("🎮 **نظام الاقيام:** تم تفعيل واجهة التحكم بالاقيام والفعاليات.")
+            await interaction.response.send_message("✅ تم إرسال رسالة نظام الاقيام في الروم المخصص!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ لم يتم العثور على الروم، تأكد من صحة الـ ID في الكود.", ephemeral=True)
+
+    elif system.value == "system_bank":
+        channel = bot.get_channel(ROOM_BANK_ID)
+        if channel:
+            await channel.send("🏦 **نظام البنك:** تم فتح الخدمات المصرفية ونظام النقاط.")
+            await interaction.response.send_message("✅ تم إرسال رسالة نظام البنك في الروم المخصص!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ لم يتم العثور على الروم، تأكد من صحة الـ ID في الكود.", ephemeral=True)
+
+    elif system.value == "system_crafting":
+        channel = bot.get_channel(ROOM_CRAFTING_ID)
+        if channel:
+            await channel.send("🛠️ **نظام التصنيع:** تم فتح قائمة التصنيع والموارد.")
+            await interaction.response.send_message("✅ تم إرسال رسالة نظام التصنيع في الروم المخصص!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ لم يتم العثور على الروم، تأكد من صحة الـ ID في الكود.", ephemeral=True)
+
+# التعامل مع الأخطاء في حال حاول عضو عادي استخدام الأمر
+@send_message.error
+async def send_message_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.errors.MissingPermissions):
+        await interaction.response.send_message("❌ عذراً، هذا الأمر مخصص فقط للمسؤولين في السيرفر ولا يمكنك استخدامه.", ephemeral=True)
+
+# تشغيل البوت
+token = os.getenv('DISCORD_TOKEN')
+bot.run(token)
